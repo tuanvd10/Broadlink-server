@@ -6,6 +6,16 @@ var HashTable = require('hashmap');
 var router = express.Router();
 var rmBroadlink = new broadlink();
 
+function sleep(ms){
+     return new Promise(resolve=>{
+         setTimeout(resolve,ms)
+     })
+}
+
+router.get('/testServer/', function (req, res){
+    res.end("Hello");
+});
+
 router.get('/getListRMDevice/', function (req, res){
     console.log(rmBroadlink.devices);
     res.end(rmBroadlink.devices);
@@ -31,23 +41,27 @@ router.get('/searchAllRMDevice/', function (req, res){
     macAddress: xxx,
     command: yyy
 } */
-router.get('/enterLearningMode/', function (req, res){
+router.get('/enterLearningMode/', async function (req, res){
     var deviceMAC = req.query.macAddress;
     var command = req.query.command;
     rmBroadlink.devices[deviceMAC].enterLearning();
-
+    var timeout = 30;
     //get data
-    while(!rmBroadlink.devices[deviceMAC].rawData){
+    while(!rmBroadlink.devices[deviceMAC].rawData && timeout>0){
         rmBroadlink.devices[deviceMAC].checkData();
+        await sleep(1000);
+        timeout-=1;
     }
-    console.log(rmBroadlink.devices[deviceMAC].rawData);
-    /* save to table: command-data */
-    device.cmdHashTable.put(command,rmBroadlink.devices[deviceMAC].rawData);
+    if(timeout>0){
+        console.log(rmBroadlink.devices[deviceMAC].rawData);
+        /* save to table: command-data */
+        device.cmdHashTable.put(command,rmBroadlink.devices[deviceMAC].rawData);
+    }
 
     rmBroadlink.devices[deviceMAC].rawData = null;
-
     rmBroadlink.devices[deviceMAC].cancelLearn();
-    res.end("END");
+
+    res.end(timeout>0?rmBroadlink.devices[deviceMAC].rawData: "Timeout");
 });
 
 router.get('/quitLearningMode/:macAddress', function (req, res){
