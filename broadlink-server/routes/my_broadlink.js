@@ -6,7 +6,7 @@ var HashTable = require('hashmap');
 var router = express.Router();
 var rmBroadlink = new broadlink();
 
-function sleep(ms){
+async function sleep(ms){
      return new Promise(resolve=>{
          setTimeout(resolve,ms)
      })
@@ -33,7 +33,7 @@ router.get('/searchAllRMDevice/', function (req, res){
      }
 
     console.log(rmBroadlink.devices);
-    res.end(JSON.stringify(rmBroadlink.devices));
+    res.end("Search Done");
 });
 
 
@@ -42,27 +42,30 @@ router.get('/searchAllRMDevice/', function (req, res){
     macAddress: xxx,
     command: yyy
 } */
-router.get('/enterLearningMode/', async function (req, res){
+router.get('/enterLearningMode/', function (req, res){
     var deviceMAC = req.query.macAddress;
     var command = req.query.command;
-    rmBroadlink.devices[deviceMAC].enterLearning();
-    var timeout = 30;
-    //get data
+    var rawData;
+    rmBroadlink.devices[deviceMAC].enterLearning(); 
+    var timeout = 30000000;
+        //get data
     while(!rmBroadlink.devices[deviceMAC].rawData && timeout>0){
-        rmBroadlink.devices[deviceMAC].checkData();
-        await sleep(1000);
+        if(timeout%1000000 == 0){
+            rmBroadlink.devices[deviceMAC].checkData();
+        }
         timeout-=1;
     }
+    rawData = rmBroadlink.devices[deviceMAC].rawData;
     if(timeout>0){
-        console.log(rmBroadlink.devices[deviceMAC].rawData);
+        console.log(rawData);
         /* save to table: command-data */
         device.cmdHashTable.put(command,rmBroadlink.devices[deviceMAC].rawData);
     }
 
     rmBroadlink.devices[deviceMAC].rawData = null;
     rmBroadlink.devices[deviceMAC].cancelLearn();
-
-    res.end(timeout>0?rmBroadlink.devices[deviceMAC].rawData: "Timeout");
+    console.log(timeout);
+    res.end(timeout>0?JSON.stringify(rawData): "Timeout");
 });
 
 router.get('/quitLearningMode/:macAddress', function (req, res){
@@ -95,7 +98,8 @@ router.post('/sendData/', function (req, res){
     /* 0x26: IR
     0x00: no repeat
     0x00,0x01,0x24,0x92: pulse length 
-    0x0d,0x05: IR need in the end of payload*/
+    0x0d,0x05: IR need in the end of payload */
+
     var payload =[0x26,0x00,0x00,0x01,0x24,0x92].concat(IRdata).concat([0x0d, 0x05]);
     rmBroadlink.devices[deviceMAC].sendData(payload);
 
