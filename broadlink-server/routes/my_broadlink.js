@@ -1,5 +1,5 @@
 var express = require('express');
-const broadlink = require('broadlinkjs-rm');
+const broadlink = require('../my_module/my_broadlink');
 var HashTable = require('hashmap');
 
 // get the reference of EventEmitter class of events module
@@ -25,7 +25,7 @@ router.get('/searchAllRMDevice/', function (req, res){
 	var listkey = [];
 	var key;
 
-	rmBroadlink.discover();
+    rmBroadlink.discover();
 	for (key in rmBroadlink.devices) {
 		let device = rmBroadlink.devices[key];
 		listkey.push(key);
@@ -52,10 +52,6 @@ router.get('/enterLearningMode/:macAddress/:command', function (req, res){
     var command = req.params.command;
     var rawData;
     var timeout = 30000000;
-	console.log(typeof(deviceMAC));
-	console.log(rmBroadlink.devices);
-	
-	console.log(rmBroadlink.devices[deviceMAC]);
 	
 	rmBroadlink.devices[deviceMAC].enterLearning(); 
         //get data
