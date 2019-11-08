@@ -18,21 +18,22 @@ router.get('/testServer/', function (req, res){
 
 router.get('/getListRMDevice/', function (req, res){
     console.log(rmBroadlink.devices);
-    res.end(rmBroadlink.devices);
+    res.end(JSON.stringify(rmBroadlink.devices));
 });
 
 router.get('/searchAllRMDevice/', function (req, res){
     rmBroadlink.discover();
-    rmBroadlink.devices.forEach(device => {
-        if(!device) continue;
+    for (var key in rmBroadlink.devices) {
+        let device = rmBroadlink.devices[key];
         device.cmdHashTable = new HashTable();
         device.on('rawData', function (data) {
             console.log('receive data: ' + data);
             device.rawData = data;
         });
-    });
+     }
+
     console.log(rmBroadlink.devices);
-    res.end(rmBroadlink.devices);
+    res.end(JSON.stringify(rmBroadlink.devices));
 });
 
 
