@@ -175,7 +175,7 @@ class Broadlink extends EventEmitter {
 
   addDevice (host, macAddress, deviceType) {
     const { log, debug } = this;
-
+	console.log("new device: " + macAddress);
     if (this.devices[macAddress]) return;
   
     assert(typeof host === 'object' && (host.port || host.port === 0) && host.address, `createDevice: host should be an object e.g. { address: '192.168.1.32', port: 80 }`);
@@ -236,9 +236,10 @@ class Device {
 	this.learingCommand = null;
 	this.rawData=null;
 	this.cmdHashTable = new HashTable();
+	
 	this.on('rawData', function (data) {
 		console.log('receive data: ' + data);
-		this.cmdHashTable.put(this.learingCommand, data);
+		this.cmdHashTable.set(this.learingCommand, data);
 		this.rawData = data;
 	});
 	
@@ -254,8 +255,7 @@ class Device {
     const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
     this.socket = socket;
 
-    socket.on('message', (response) => {
-	  console.log("receive response:" + response.toString('hex'));
+    this.socket.on('message', (response) => {
       const encryptedPayload = Buffer.alloc(response.length - 0x38, 0);
       response.copy(encryptedPayload, 0, 0x38);
       
@@ -281,7 +281,6 @@ class Device {
 
         this.id = Buffer.alloc(0x04, 0);
         payload.copy(this.id, 0, 0x00, 0x04);
-
         this.emit('deviceReady');
       } else if (command == 0xee || command == 0xef) {
         this.onPayloadReceived(err, payload);
@@ -325,10 +324,9 @@ class Device {
     this.sendPacket(0x65, payload);
   }
 
-  sendPacket (command, payload, debug = false) {
+  sendPacket (command, payload, debug = true) {
     const { log, socket } = this;
     this.count = (this.count + 1) & 0xffff;
-	console.log("Send command: " + command);
     let packet = Buffer.alloc(0x38, 0);
 
     packet[0x00] = 0x5a;
@@ -390,6 +388,8 @@ class Device {
 
     const data = Buffer.alloc(payload.length - 4, 0);
     payload.copy(data, 0, 4);
+	console.log('onPayloadReceived param: ' + param);
+	console.log('onPayloadReceived payload: ' + payload.toString('hex'));
 
     switch (param) {
       case 1: {
@@ -401,17 +401,22 @@ class Device {
         const data = Buffer.alloc(payload.length - 4, 0);
         payload.copy(data, 0, 4);
         this.emit('rawData', data);
+		console.log('receive data case 4: ' + data.toString('hex'));
+		this.cmdHashTable.set(this.learingCommand, data);
+		this.rawData = data;
         break;
       }
       case 26: { //get from check_data
         const data = Buffer.alloc(1, 0);
         payload.copy(data, 0, 0x4);
+		console.log('receive data case 26: ' + data);
         if (data[0] !== 0x1) break;
         this.emit('rawRFData', data);
         break;
       }
       case 27: { //get from check_data
         const data = Buffer.alloc(1, 0);
+		console.log('receive data case 27: ' + data);
         payload.copy(data, 0, 0x4);
         if (data[0] !== 0x1) break;
         this.emit('rawRFData2', data);
