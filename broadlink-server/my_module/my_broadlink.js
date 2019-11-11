@@ -385,12 +385,8 @@ class Device {
 
   onPayloadReceived (err, payload) {
     const param = payload[0];
-
     const data = Buffer.alloc(payload.length - 4, 0);
     payload.copy(data, 0, 4);
-	console.log('onPayloadReceived param: ' + param);
-	console.log('onPayloadReceived payload: ' + payload.toString('hex'));
-
     switch (param) {
       case 1: {
         const temp = (payload[0x4] * 10 + payload[0x5]) / 10.0;
@@ -401,9 +397,9 @@ class Device {
         const data = Buffer.alloc(payload.length - 4, 0);
         payload.copy(data, 0, 4);
         this.emit('rawData', data);
-		console.log('receive data case 4: ' + data.toString('hex'));
-		this.cmdHashTable.set(this.learingCommand, data);
-		this.rawData = data;
+        console.log('receive data case 4: ' + data.toString('hex'));
+        this.cmdHashTable.set(this.learingCommand, data);
+        this.rawData = data;
         break;
       }
       case 26: { //get from check_data
