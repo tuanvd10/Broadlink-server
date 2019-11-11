@@ -3,6 +3,8 @@ const dgram = require('dgram');
 const os = require('os');
 const crypto = require('crypto');
 const assert = require('assert');
+const HashTable = require('hashmap');
+
 
 // RM Devices (without RF support)
 const rmDeviceTypes = {};
@@ -230,7 +232,16 @@ class Device {
     this.key = new Buffer([0x09, 0x76, 0x28, 0x34, 0x3f, 0xe9, 0x9e, 0x23, 0x76, 0x5c, 0x15, 0x13, 0xac, 0xcf, 0x8b, 0x02]);
     this.iv = new Buffer([0x56, 0x2e, 0x17, 0x99, 0x6d, 0x09, 0x3d, 0x28, 0xdd, 0xb3, 0xba, 0x69, 0x5a, 0x2e, 0x6f, 0x58]);
     this.id = new Buffer([0, 0, 0, 0]);
-
+	
+	this.learingCommand = null;
+	this.rawData=null;
+	this.cmdHashTable = new HashTable();
+	this.on('rawData', function (data) {
+		console.log('receive data: ' + data);
+		this.cmdHashTable.put(this.learingCommand, data);
+		this.rawData = data;
+	});
+	
     this.setupSocket();
 
     // Dynamically add relevant RF methods if the device supports it
@@ -244,6 +255,7 @@ class Device {
     this.socket = socket;
 
     socket.on('message', (response) => {
+	  console.log("receive response:" + response.toString('hex'));
       const encryptedPayload = Buffer.alloc(response.length - 0x38, 0);
       response.copy(encryptedPayload, 0, 0x38);
       
@@ -261,6 +273,7 @@ class Device {
       if (!payload) return false;
 
       const command = response[0x26];
+	  console.log("receive command:" + command);
 
       if (command == 0xe9) {
         this.key = Buffer.alloc(0x10, 0);
@@ -315,7 +328,7 @@ class Device {
   sendPacket (command, payload, debug = false) {
     const { log, socket } = this;
     this.count = (this.count + 1) & 0xffff;
-
+	console.log("Send command: " + command);
     let packet = Buffer.alloc(0x38, 0);
 
     packet[0x00] = 0x5a;
@@ -364,11 +377,11 @@ class Device {
     packet[0x20] = checksum & 0xff;
     packet[0x21] = checksum >> 8;
 
-    if (debug) log('\x1b[33m[DEBUG]\x1b[0m packet', packet.toString('hex'))
+    if (debug) console.log('\x1b[33m[DEBUG]\x1b[0m packet', packet.toString('hex'))
 
     socket.send(packet, 0, packet.length, this.host.port, this.host.address, (err, bytes) => {
-      if (debug && err) log('\x1b[33m[DEBUG]\x1b[0m send packet error', err)
-      if (debug) log('\x1b[33m[DEBUG]\x1b[0m successfuly sent packet - bytes: ', bytes)
+      if (debug && err) console.log('\x1b[33m[DEBUG]\x1b[0m send packet error', err)
+      if (debug) console.log('\x1b[33m[DEBUG]\x1b[0m successfuly sent packet - bytes: ', bytes)
     });
   }
 
@@ -415,7 +428,7 @@ class Device {
     this.sendPacket(0x6a, packet);
   }
 
-  sendData (data, debug = false) {
+  sendData (data, debug = true) {
     let packet = new Buffer([0x02, 0x00, 0x00, 0x00]);
     packet = Buffer.concat([packet, data]);
     this.sendPacket(0x6a, packet, debug);
