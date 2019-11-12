@@ -5,10 +5,15 @@ const crypto = require('crypto');
 const assert = require('assert');
 const HashTable = require('hashmap');
 
+const fs = require('fs');
+var mkdirp = require('mkdirp');
+var getDirName = require('path').dirname;
 
 // RM Devices (without RF support)
 const rmDeviceTypes = {};
 rmDeviceTypes[parseInt(0x2737, 16)] = 'Broadlink RM Mini';
+rmDeviceTypes[parseInt(0x27c2, 16)] = "Broadlink RM Mini 3";
+rmDeviceTypes[parseInt(0x27de, 16)] = "Broadlink RM Mini 3 v2"; 
 rmDeviceTypes[parseInt(0x273d, 16)] = 'Broadlink RM Pro Phicomm';
 rmDeviceTypes[parseInt(0x2712, 16)] = 'Broadlink RM2';
 rmDeviceTypes[parseInt(0x2783, 16)] = 'Broadlink RM2 Home Plus';
@@ -156,9 +161,9 @@ class Broadlink extends EventEmitter {
     // Broadlink device has responded
     const macAddress = Buffer.alloc(6, 0);
 
-    message.copy(macAddress, 0x00, 0x3D);
+    message.copy(macAddress, 0x00, 0x3F);
     message.copy(macAddress, 0x01, 0x3E);
-    message.copy(macAddress, 0x02, 0x3F);
+    message.copy(macAddress, 0x02, 0x3D);
     message.copy(macAddress, 0x03, 0x3C);
     message.copy(macAddress, 0x04, 0x3B);
     message.copy(macAddress, 0x05, 0x3A);
@@ -235,20 +240,38 @@ class Device {
 	
 	this.learingCommand = null;
 	this.rawData=null;
+
 	this.cmdHashTable = new HashTable();
 	
-	this.on('rawData', function (data) {
-		console.log('receive data: ' + data);
+/*	this.on('rawData', function (data) {
+		//console.log('receive data: ' + data);
 		this.cmdHashTable.set(this.learingCommand, data);
 		this.rawData = data;
 	});
-	
+*/	
+	/*get list saved command*/
+	this.getListSavedCommand();
+
     this.setupSocket();
 
     // Dynamically add relevant RF methods if the device supports it
     const isRFSupported = rmPlusDeviceTypes[parseInt(deviceType, 16)];
     if (isRFSupported) this.addRFSupport();
   }
+
+	getListSavedCommand(){
+		var path = "./command_store/"+this.mac;
+		fs.readdirSync(path).forEach(file => {
+			let command = file.split('.').slice(0, -1).join('.');
+			console.log(command);
+			fs.readFile(path+"/"+file, (err,data) => {
+				if(!err){
+					//console.log(data.toString('hex'));
+					this.cmdHashTable.set(command,data);
+				}
+			});
+		});
+	}
 
   // Create a UDP socket to receive messages from the broadlink device.
   setupSocket () {
@@ -283,9 +306,11 @@ class Device {
         payload.copy(this.id, 0, 0x00, 0x04);
         this.emit('deviceReady');
       } else if (command == 0xee || command == 0xef) {
-        this.onPayloadReceived(err, payload);
-        
-      } else {
+        this.onPayloadReceived(err, payload);       
+      } else if(command==0x72) {
+		  console.log(payload.toString('hex'));
+	  }
+	  else{
         console.log('Unhandled Command: ', command)
       }
     });
@@ -324,7 +349,7 @@ class Device {
     this.sendPacket(0x65, payload);
   }
 
-  sendPacket (command, payload, debug = true) {
+  sendPacket (command, payload, debug = false) {
     const { log, socket } = this;
     this.count = (this.count + 1) & 0xffff;
     let packet = Buffer.alloc(0x38, 0);
@@ -396,7 +421,7 @@ class Device {
       case 4: { //get from check_data
         const data = Buffer.alloc(payload.length - 4, 0);
         payload.copy(data, 0, 4);
-        this.emit('rawData', data);
+        //this.emit('rawData', data);
         console.log('receive data case 4: ' + data.toString('hex'));
         this.cmdHashTable.set(this.learingCommand, data);
         this.rawData = data;
@@ -429,7 +454,7 @@ class Device {
     this.sendPacket(0x6a, packet);
   }
 
-  sendData (data, debug = true) {
+  sendData (data, debug = false) {
     let packet = new Buffer([0x02, 0x00, 0x00, 0x00]);
     packet = Buffer.concat([packet, data]);
     this.sendPacket(0x6a, packet, debug);
@@ -458,19 +483,19 @@ class Device {
       const packet = Buffer.alloc(16, 0);
       packet[0] = 0x19;
       this.sendPacket(0x6a, packet);
-    }
+    };
 
     this.checkRFData = () => {
       const packet = Buffer.alloc(16, 0);
       packet[0] = 0x1a;
       this.sendPacket(0x6a, packet);
-    }
+    };
 
     this.checkRFData2 = () => {
       const packet = Buffer.alloc(16, 0);
       packet[0] = 0x1b;
       this.sendPacket(0x6a, packet);
-    }
+    };
   }
 }
 
