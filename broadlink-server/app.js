@@ -7,7 +7,7 @@ var logger = require('morgan');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var broadlinkRouter = require('./routes/broadlink_server')
-require('./aws_mqtt.js);
+require('./aws_mqtt');
 
 var app = express();
 
