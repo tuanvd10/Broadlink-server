@@ -6,6 +6,7 @@
     "start": "node ./bin/www"
   },
   "dependencies": {
+    "aws-iot-device-sdk": "^2.2.1",
     "broadlinkjs-rm": "^0.6.0",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",

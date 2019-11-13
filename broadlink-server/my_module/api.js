@@ -1,12 +1,8 @@
-var express = require('express');
 const broadlink = require('../my_module/my_broadlink');
-var HashTable = require('hashmap');
 const fs = require('fs');
-var mkdirp = require('mkdirp');
-var getDirName = require('path').dirname;
+const mkdirp = require('mkdirp');
+const getDirName = require('path').dirname;
 
-// get the reference of EventEmitter class of events module
-var router = express.Router();
 var rmBroadlink = new broadlink();
 
 function sleep(ms){
@@ -15,48 +11,16 @@ function sleep(ms){
      })
 }
 
-router.get('/testServer/', function (req, res){
-    res.end("Hello");
-});
-
-router.get('/getListRMDevice/', function (req, res){
-    res.end(JSON.stringify(rmBroadlink.devices));
-});
-
-router.get('/searchAllRMDevice/', function (req, res){
-
-    searchAllRMDevice().then(()=>
-        res.end("Search Done: " + JSON.stringify(rmBroadlink.devices))
-    );
-});
-
-router.get('/startLearning/:macAddress/:command', function (req, res){
-    var deviceMAC = req.params.macAddress;
-    var command = req.params.command;
-	startLearning(deviceMAC, command).then((data) => {
-        if(data!="Timeout" || data!="err") 
-            data = data.toString('hex');
-        res.end(data);
-    })
-});
-
-router.get('/checkdata/:macAddress', function (req, res){
-    var deviceMAC = req.params.macAddress;
-    rmBroadlink.devices[deviceMAC].checkData();
-    res.end();
-});
-
-router.get('/sendData/:macAddress/:command', function (req, res){
-    var deviceMAC = req.params.macAddress;
-    var command = req.params.command;
-    sendData(deviceMAC,command).then((result) => res.end(result!="err"?result.toString('hex'):result));
-});
-
 /*API use for both REST or MQTT */
+function getListRMDevice(){
+	return rmBroadlink.devices;
+}
+
 async function searchAllRMDevice(){
     rmBroadlink.discover();
     await sleep(10000);
-    console.log("search done!");
+    //console.log("search done!");
+	return rmBroadlink.devices;
 }
 
 async function startLearning(macAddress, command){
@@ -153,4 +117,8 @@ async function readFile(mac, cmd){
 	});
 	return result;
 }
-module.exports = router;
+
+exports.searchAllRMDevice=searchAllRMDevice;
+exports.sendData=sendData;
+exports.startLearning=startLearning;
+exports.getListRMDevice=getListRMDevice;

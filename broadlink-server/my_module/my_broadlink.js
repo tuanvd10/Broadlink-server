@@ -180,7 +180,7 @@ class Broadlink extends EventEmitter {
 
   addDevice (host, macAddress, deviceType) {
     const { log, debug } = this;
-	console.log("new device: " + macAddress);
+	//console.log("new device: " + macAddress);
     if (this.devices[macAddress]) return;
   
     assert(typeof host === 'object' && (host.port || host.port === 0) && host.address, `createDevice: host should be an object e.g. { address: '192.168.1.32', port: 80 }`);
@@ -263,7 +263,7 @@ class Device {
 		var path = "./command_store/"+this.mac;
 		fs.readdirSync(path).forEach(file => {
 			let command = file.split('.').slice(0, -1).join('.');
-			console.log(command);
+			//console.log(command);
 			fs.readFile(path+"/"+file, (err,data) => {
 				if(!err){
 					//console.log(data.toString('hex'));
@@ -296,7 +296,7 @@ class Device {
       if (!payload) return false;
 
       const command = response[0x26];
-	  console.log("receive command:" + command);
+	  //console.log("receive command:" + command);
 
       if (command == 0xe9) {
         this.key = Buffer.alloc(0x10, 0);
@@ -307,10 +307,7 @@ class Device {
         this.emit('deviceReady');
       } else if (command == 0xee || command == 0xef) {
         this.onPayloadReceived(err, payload);       
-      } else if(command==0x72) {
-		  console.log(payload.toString('hex'));
-	  }
-	  else{
+      } else{
         console.log('Unhandled Command: ', command)
       }
     });
@@ -422,7 +419,6 @@ class Device {
         const data = Buffer.alloc(payload.length - 4, 0);
         payload.copy(data, 0, 4);
         //this.emit('rawData', data);
-        console.log('receive data case 4: ' + data.toString('hex'));
         this.cmdHashTable.set(this.learingCommand, data);
         this.rawData = data;
         break;
@@ -430,14 +426,12 @@ class Device {
       case 26: { //get from check_data
         const data = Buffer.alloc(1, 0);
         payload.copy(data, 0, 0x4);
-		console.log('receive data case 26: ' + data);
         if (data[0] !== 0x1) break;
         this.emit('rawRFData', data);
         break;
       }
       case 27: { //get from check_data
         const data = Buffer.alloc(1, 0);
-		console.log('receive data case 27: ' + data);
         payload.copy(data, 0, 0x4);
         if (data[0] !== 0x1) break;
         this.emit('rawRFData2', data);
