@@ -9,7 +9,7 @@ router.get('/testServer/', function (req, res){
 });
 
 router.get('/getListRMDevice/', function (req, res){
-    res.end(api.getListRMDevice());
+    res.end(JSON.stringify(api.getListRMDevice()));
 });
 
 router.get('/searchAllRMDevice/', function (req, res){
@@ -18,20 +18,26 @@ router.get('/searchAllRMDevice/', function (req, res){
     );
 });
 
-router.get('/startLearning/:macAddress/:command', function (req, res){
+router.get('/startLearning/:macAddress/:client/:command', function (req, res){
     var deviceMAC = req.params.macAddress;
     var command = req.params.command;
-	api.startLearning(deviceMAC, command).then((data) => {
+	var client = req.params.client;
+	api.startLearning(deviceMAC, command,client).then((data) => {
         if(data!="Timeout" || data!="err") 
             data = data.toString('hex');
         res.end(data);
     });
 });
 
-router.get('/sendData/:macAddress/:command', function (req, res){
+router.get('/sendData/:macAddress/:client/:command', function (req, res){
     var deviceMAC = req.params.macAddress;
     var command = req.params.command;
-    api.sendData(deviceMAC,command).then((result) => res.end(result!="err"?result.toString('hex'):result));
+	var client = req.params.client;
+	if(deviceMAC && command && client)
+		api.sendData(deviceMAC,command,client)
+			.then((result) => res.end(result!="err"?result.toString('hex'):result));
+	else 
+		res.end("missing argument");
 });
 
 module.exports = router;

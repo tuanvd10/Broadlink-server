@@ -240,7 +240,7 @@ class Device {
 	
 	this.learingCommand = null;
 	this.rawData=null;
-
+	this.client = null;
 	this.cmdHashTable = new HashTable();
 	
 /*	this.on('rawData', function (data) {
@@ -261,16 +261,27 @@ class Device {
 
 	getListSavedCommand(){
 		var path = "./command_store/"+this.mac;
-		fs.readdirSync(path).forEach(file => {
-			let command = file.split('.').slice(0, -1).join('.');
-			//console.log(command);
-			fs.readFile(path+"/"+file, (err,data) => {
-				if(!err){
-					//console.log(data.toString('hex'));
-					this.cmdHashTable.set(command,data);
+		fs.readdir(path, (err,clientFiles)=>{
+			if(err || !clientFiles) return;
+			clientFiles.forEach(clientFile => {
+				//Each file is an dir representation for a client
+				if(!this.cmdHashTable.get(clientFile)){
+					this.cmdHashTable.set(clientFile, new HashTable());
 				}
+				
+				fs.readdir(path+"/"+clientFile, (err, cmdFiles) => {
+					if(err || !cmdFiles) return;
+					cmdFiles.forEach(cmdFile =>{
+						let command = cmdFile.split('.').slice(0, -1).join('.');
+						fs.readFile(path+"/"+clientFile+"/"+cmdFile, (err,data) => {
+							if(!err){
+								this.cmdHashTable.get(clientFile).set(command,data);
+							}
+						});
+					});
+				});
 			});
-		});
+		})
 	}
 
   // Create a UDP socket to receive messages from the broadlink device.

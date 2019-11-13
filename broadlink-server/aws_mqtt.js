@@ -34,19 +34,25 @@ device.on('message', function(topic, payload) {
 	}else{
 		switch (parsedTopics[1]){
 			case "search":
-				 api.searchAllRMDevice().then((devices)=>
+				api.searchAllRMDevice().then((devices)=>
 					console.log("Search Done: " + JSON.stringify(devices))
 				);
 				break;
 			case "send_data":
-				 api.sendData(payload.mac, payload.command).then((result) => console.log(result!="err"?result.toString('hex'):result));
+				if(payload.mac && payload.command && payload.client)
+					api.sendData(payload.mac, payload.command,payload.client).then((result) => console.log(result!="err"?result.toString('hex'):result));
+				else 
+					console.log("missing argument");
 				break;
 			case "learn":
-				api.startLearning(payload.mac, payload.command).then((data) => {
-					if(data!="Timeout" || data!="err") 
-						data = data.toString('hex');
-					console.log(data);
-				});
+				if(payload.mac && payload.command && payload.client)	
+					api.startLearning(payload.mac, payload.command, payload.client).then((data) => {
+						if(data!="Timeout" || data!="err") 
+							data = data.toString('hex');
+						console.log(data);
+					});
+				else 
+					console.log("missing argument");
 				break;
 			default:
 				console.log("no broker " + topic);
@@ -54,6 +60,10 @@ device.on('message', function(topic, payload) {
 		}
 	}
 });
+
+api.searchAllRMDevice().then((devices)=>
+	console.log("Search Done: " )//+ JSON.stringify(devices))
+);
 
 function test(){
 	console.log("testtttttttttt")

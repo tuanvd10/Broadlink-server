@@ -23,10 +23,11 @@ async function searchAllRMDevice(){
 	return rmBroadlink.devices;
 }
 
-async function startLearning(macAddress, command){
+async function startLearning(macAddress, command, client){
     var device = rmBroadlink.devices[macAddress];
     var data;
 	device.learingCommand=command;
+	device.client = client;
     device.enterLearning();
     await sleep(500);
     data = await checkDataLearned(device);
@@ -34,17 +35,24 @@ async function startLearning(macAddress, command){
     device.cancelLearn();
 	device.learingCommand=null;
 	device.rawData=null;
+	device.client = null;
     return data;
 }
 
-async function sendData(deviceMAC, command){
+async function sendData(deviceMAC, command, client){
     var device = rmBroadlink.devices[deviceMAC];
     /* maybe save in file base on MAC, cmd */
-    var IRdata = device.cmdHashTable.get(command);
+    var client = device.cmdHashTable.get(client)
+	if(!client)
+		return "Error: client not added to device"
+	var IRdata = client.get(command);
 	//var IRdata = await readFile(deviceMAC, command);
-	if(IRdata !="err") 
-		device.sendData(IRdata, true);
-    return IRdata;
+	if(IRdata) {
+		//device.sendData(IRdata, true);
+		return IRdata;
+	}else{
+			return "Error: command not learned before"
+    }
 }
 
 async function checkDataLearned(device){
@@ -66,7 +74,7 @@ async function checkDataLearned(device){
 
 async function writeFile(device){
 	let result;
-	let path = "./command_store/"+device.mac+"/" +device.learingCommand+".txt";
+	let path = "./command_store/"+device.mac+"/" +device.client+"/"+device.learingCommand+".txt";
 	result = await new Promise((resolve,reject) => {
 		mkdirp(getDirName(path), function (err) {
 			if (err) {
@@ -77,7 +85,7 @@ async function writeFile(device){
 				resolve("done");
 		});	
 	});
-	if(result==="err") return result;
+	if(result=="err") return result;
 	result = await new Promise((resolve, reject) => {
 		fs.writeFile(path, device.rawData, {flag: "w"},function(err){
 			if(err) {
